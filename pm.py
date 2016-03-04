@@ -38,7 +38,11 @@ else:
 
 print "Lese aus Datei: %s " % Datei
 
-fo = open(Datei, "r+")
+try:
+    fo = open(Datei, "r+")
+except IOError:
+    print("Die Datei '%s' kann nicht geoeffnet werden!" % Datei)
+    exit(1)
 str = fo.read();
 fo.close()
 
