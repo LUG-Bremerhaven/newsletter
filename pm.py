@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import csv,smtplib
+#import csv,smtplib
+from smtplib import SMTP_SSL as SMTP
 from email.mime.text import MIMEText
 from email.header import Header
 from sys import argv
-import logging
+import logging, netrc, csv, sys
  
 
 #LogMode=logging.DEBUG
@@ -29,6 +30,29 @@ logging.debug("running in debug mode")
 
 logging.info("Mailing script started")
 
+#some standards:
+FROM = 'info@lug-bremerhaven.de'
+SUBJECT = "[lug-bremerhaven] Veranstaltungsinfo"
+
+# Define which host in the .netrc file to use
+HOST = 'lug-mailserver'
+
+# Read from the .netrc file in your home directory
+secrets = netrc.netrc()
+login, account, password = secrets.authenticators( HOST )
+
+logging.debug('User: %s' % login)
+logging.debug('Server: %s' % account)
+logging.debug('Password: %s' % password)
+
+
+SMTPserver = account
+#USERNAME = login
+#PASSWORD = password 
+
+# define the content of the mail. get it from mail.txt or, if defined, use the commandline given file
+# eg: /opt/mailer/pm.py /opt/mailer/usertreffen.txt
+
 try:
     argv[1]
 except IndexError:
@@ -43,7 +67,7 @@ try:
 except IOError:
     print("Die Datei '%s' kann nicht geoeffnet werden!" % Datei)
     exit(1)
-str = fo.read();
+CONTENT = fo.read();
 fo.close()
 
 
@@ -57,16 +81,13 @@ with open('liste-lug.csv') as csvfile:
 
        logging.debug(" %s - %s " % (m_name, m_email))
  
-       SUBJECT = "[lug-bremerhaven] heute Python Treffen" 
-
        try:
-          TXT = str % m_name
+          TXT = CONTENT % m_name
        except TypeError:
-          TXT = str 
+          TXT = CONTENT 
 
        # Send the mail
 
-       FROM = 'info@lug-bremerhaven.de'
        TO = m_email
 
        mime = MIMEText(TXT, 'plain', 'utf-8')
@@ -75,9 +96,22 @@ with open('liste-lug.csv') as csvfile:
        mime ['Subject'] = Header(SUBJECT, 'utf-8')
 
 
-       server = smtplib.SMTP('localhost')
-       server.sendmail(FROM, TO, mime.as_string())
-       server.quit()
+       #server = smtplib.SMTP(SMTPserver)
+       try:
+              conn = SMTP(SMTPserver)
+              conn.set_debuglevel(False)
+              conn.login(login, password)
+              try:
+                 conn.sendmail(FROM, TO, mime.as_string())
+              finally:
+                 conn.quit()
+
+       except Exception, exc:
+              sys.exit( "mail failed; %s" % str(exc) ) # give a error message
+              #sys.exit( "mail failed; " ) # give a error message
+
+       #server.sendmail(FROM, TO, mime.as_string())
+       #server.quit()
 
 
 exit()
