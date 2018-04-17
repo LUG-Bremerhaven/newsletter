@@ -37,12 +37,11 @@ def parse_cmdline():
         '--from', type=str,
         dest='fromOrigin', metavar='mailheader', default="info@lug-bremerhaven.de",
         help='originator/from')
-    parser.add_argument('FILE', nargs='*', default='mail.txt')
+    parser.add_argument('FILE', default='mail.txt')
     args = parser.parse_args()
     return args
 
 arguments = parse_cmdline()
-print(arguments.logfile)
 
 logging.basicConfig(filename=arguments.logfile,filemode='a',
                     format='%(asctime)s %(levelname)s: %(message)s',
