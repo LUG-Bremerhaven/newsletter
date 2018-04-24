@@ -37,9 +37,21 @@ SUBJECT = "[lug-bremerhaven] Veranstaltungsinfo"
 # Define which host in the .netrc file to use
 HOST = 'lug-mailserver'
 
+
 # Read from the .netrc file in your home directory
-secrets = netrc.netrc()
-login, account, password = secrets.authenticators( HOST )
+try:
+  secrets = netrc.netrc()
+  login, account, password = secrets.authenticators( HOST )
+except IOError as err:
+  print("Error opening .netrc file")
+  logging.error("Error opening .netrc file")
+  logging.debug(err)
+  exit()
+except netrc.NetrcParseError as err:
+  print("Error while parsing .netrc file")
+  logging.error("Error while parsing .netrc file")
+  logging.debug(err)
+  exit()
 
 logging.debug('User: %s' % login)
 logging.debug('Server: %s' % account)
