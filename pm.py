@@ -6,33 +6,49 @@ from smtplib import SMTP_SSL as SMTP
 from email.mime.text import MIMEText
 from email.header import Header
 from sys import argv
-import logging, netrc, csv, sys
+import logging
+import netrc
+import csv
+import sys
+import argparse
  
 
 #LogMode=logging.DEBUG
 #LogMode=logging.INFO
 #LogMode=logging.WARN
 
-try:
-   argv[2]
-except IndexError:
-   LogMode=logging.INFO
-else:
-   if argv[2] == "-d":
-      LogMode=logging.DEBUG
+# this function parses the cmdline arguments
+def parse_cmdline():
+    usage = '%s [OPTIONS] FILE\n' % (sys.argv[0])
+    parser = argparse.ArgumentParser(usage)
+    parser.add_argument(
+        '--log-file', type=str,
+        dest='logfile', metavar='FILE', default="log.txt",
+        help='Filename of the logfile')
+    parser.add_argument(
+        '--log-level', type=str,
+        dest='loglevel', metavar='level', default="INFO",
+        help='Available loglevel: INFO, DEBUG')
+    parser.add_argument(
+        '--subject', type=str,
+        dest='subject', metavar='mailheader', default="[lug-bremerhaven] Veranstaltungsinfo",
+        help='Subject of the mail')
+    parser.add_argument(
+        '--from', type=str,
+        dest='fromOrigin', metavar='mailheader', default="info@lug-bremerhaven.de",
+        help='originator/from')
+    parser.add_argument('FILE', default='mail.txt')
+    args = parser.parse_args()
+    return args
 
+arguments = parse_cmdline()
 
-logging.basicConfig(filename="log.txt",filemode='a',
-                            format='%(asctime)s %(levelname)s: %(message)s',
-                            datefmt='%d.%m.%Y %H:%M:%S', level=LogMode)
+logging.basicConfig(filename=arguments.logfile,filemode='a',
+                    format='%(asctime)s %(levelname)s: %(message)s',
+                    datefmt='%d.%m.%Y %H:%M:%S', level=arguments.loglevel)
+logging.info("Mailing script started")
  
 logging.debug("running in debug mode")
-
-logging.info("Mailing script started")
-
-#some standards:
-FROM = 'info@lug-bremerhaven.de'
-SUBJECT = "[lug-bremerhaven] Veranstaltungsinfo"
 
 # Define which host in the .netrc file to use
 HOST = 'lug-mailserver'
@@ -65,28 +81,22 @@ SMTPserver = account
 # define the content of the mail. get it from mail.txt or, if defined, use the commandline given file
 # eg: /opt/mailer/pm.py /opt/mailer/usertreffen.txt
 
-try:
-    argv[1]
-except IndexError:
-    Datei = 'mail.txt'
-else:
-    Datei = argv[1]
-
-print "Lese aus Datei: %s " % Datei
+logging.debug("Lese aus Datei: %s " % arguments.FILE)
 
 try:
-    fo = open(Datei, "r+")
+    fo = open(arguments.FILE, "r+")
 except IOError:
-    print("Die Datei '%s' kann nicht geoeffnet werden!" % Datei)
+    print("Die Datei '%s' kann nicht geoeffnet werden!" % arguments.FILE)
+    logging.info("Couldn't open '%s'" %arguments.FILE)
     exit(1)
 CONTENT = fo.read();
 fo.close()
 
 
-
-
 with open('liste-lug.csv') as csvfile:
+   logging.debug("The mail subject & originator:'%s' & '%s'" %(arguments.subject, arguments.fromOrigin))
    reader = csv.DictReader(csvfile)
+   mailcounter = 0 # count the mails to send 
    for row in reader:
        m_name = row['name']
        m_email = row['email']
@@ -103,9 +113,9 @@ with open('liste-lug.csv') as csvfile:
        TO = m_email
 
        mime = MIMEText(TXT, 'plain', 'utf-8')
-       mime ['FROM'] = 'info@lug-bremerhaven.de' 
+       mime ['FROM'] = arguments.fromOrigin
        mime ['To'] = m_email
-       mime ['Subject'] = Header(SUBJECT, 'utf-8')
+       mime ['Subject'] = Header(arguments.subject, 'utf-8')
 
 
        #server = smtplib.SMTP(SMTPserver)
@@ -114,7 +124,8 @@ with open('liste-lug.csv') as csvfile:
               conn.set_debuglevel(False)
               conn.login(login, password)
               try:
-                 conn.sendmail(FROM, TO, mime.as_string())
+                 conn.sendmail(arguments.fromOrigin, TO, mime.as_string())
+                 mailcounter += 1
               finally:
                  conn.quit()
 
@@ -125,6 +136,6 @@ with open('liste-lug.csv') as csvfile:
        #server.sendmail(FROM, TO, mime.as_string())
        #server.quit()
 
-
+logging.info("Send '%i' mails" % mailcounter)
 exit()
 
