@@ -6,6 +6,7 @@ from smtplib import SMTP_SSL as SMTP
 from email.mime.text import MIMEText
 from email.header import Header
 from sys import argv
+import os
 import logging
 import netrc
 import csv
@@ -37,6 +38,10 @@ def parse_cmdline():
         '--from', type=str,
         dest='fromOrigin', metavar='mailheader', default="info@lug-bremerhaven.de",
         help='originator/from')
+    parser.add_argument(
+        '--list', type=str,
+        dest='list', metavar='csvfile', default="liste-lug.csv",
+        help='List of all member email addresses as csv')
     parser.add_argument('FILE', default='mail.txt')
     args = parser.parse_args()
     return args
@@ -87,13 +92,17 @@ try:
     fo = open(arguments.FILE, "r+")
 except IOError:
     print("Die Datei '%s' kann nicht geoeffnet werden!" % arguments.FILE)
-    logging.info("Couldn't open '%s'" %arguments.FILE)
+    logging.info("Couldn't open '%s'" % arguments.FILE)
     exit(1)
 CONTENT = fo.read();
 fo.close()
 
 
-with open('liste-lug.csv') as csvfile:
+if not os.path.isfile(arguments.list):
+  print("Die Datei '%s' kann nicht gefunden werden!" % arguments.list)
+  logging.info("Couldn't find '%s'" % arguments.list)
+  exit(1)
+with open(arguments.list) as csvfile:
    logging.debug("The mail subject & originator:'%s' & '%s'" %(arguments.subject, arguments.fromOrigin))
    reader = csv.DictReader(csvfile)
    mailcounter = 0 # count the mails to send 
